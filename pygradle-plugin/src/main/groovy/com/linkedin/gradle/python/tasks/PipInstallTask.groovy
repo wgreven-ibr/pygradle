@@ -77,6 +77,10 @@ class PipInstallTask extends DefaultTask implements FailureReasonProvider, Suppo
     @Optional
     boolean sorted = true
 
+    @Input
+    @Optional
+    File targetDirectory
+
     PackageSettings<PackageInfo> packageSettings
 
     EnvironmentMerger environmentMerger = new DefaultEnvironmentMerger()
@@ -179,8 +183,9 @@ class PipInstallTask extends DefaultTask implements FailureReasonProvider, Suppo
         String sanitizedName = packageInfo.name.replace('-', '_')
 
         // See: https://www.python.org/dev/peps/pep-0376/
-        File egg = sitePackages.resolve("${ sanitizedName }-${ packageInfo.version }-py${ pyVersion }.egg-info").toFile()
-        File dist = sitePackages.resolve("${ sanitizedName }-${ packageInfo.version }.dist-info").toFile()
+        def target = targetDirectory ? targetDirectory.toPath() : sitePackages
+        File egg = target.resolve("${ sanitizedName }-${ packageInfo.version }-py${ pyVersion }.egg-info").toFile()
+        File dist = target.resolve("${ sanitizedName }-${ packageInfo.version }.dist-info").toFile()
 
         if (!packageSettings.requiresSourceBuild(packageInfo) &&
             (project.file(egg).exists() || project.file(dist).exists())) {
@@ -212,6 +217,10 @@ class PipInstallTask extends DefaultTask implements FailureReasonProvider, Suppo
         def installOptions = packageSettings.getInstallOptions(packageInfo)
         if (installOptions != null) {
             commandLine.addAll(installOptions)
+        }
+
+        if (targetDirectory != null) {
+            commandLine.addAll(['--target', targetDirectory.toString()])
         }
 
         def cachedWheel = wheelCache.findWheel(packageInfo.name, packageInfo.version, pythonDetails)
